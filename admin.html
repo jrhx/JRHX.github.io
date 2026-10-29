@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>站长管理后台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --primary: #0071e3;
+            --bg: #fbfbfd;
+            --card-bg: #ffffff;
+            --text-main: #1d1d1f;
+            --text-sub: #6e6e73;
+            --border: #d2d2d7;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            --radius: 12px;
+            --danger: #ff3b30;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+        .header {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0077ed;
+        }
+        .btn-secondary {
+            background: #f5f5f7;
+            color: var(--text-main);
+        }
+        .btn-secondary:hover {
+            background: #e8e8ed;
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #ff453a;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 24px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+        }
+        .panel {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+        }
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .game-list {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .game-item {
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 8px;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .game-item:hover {
+            background: #f5f5f7;
+        }
+        .game-item.active {
+            background: #e8f2ff;
+            border-color: var(--primary);
+        }
+        .game-item-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .game-item-del {
+            color: var(--danger);
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .game-item:hover .game-item-del {
+            opacity: 1;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+        .form-input:focus, .form-textarea:focus {
+            border-color: var(--primary);
+        }
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .tip {
+            font-size: 12px;
+            color: var(--text-sub);
+            margin-top: 4px;
+        }
+        .empty-tip {
+            text-align: center;
+            color: var(--text-sub);
+            padding: 40px 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎮 游戏分享站 · 站长后台</h1>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="importData()">导入现有数据</button>
+            <button class="btn btn-primary" onclick="exportData()">导出 games.json</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 左侧游戏列表 -->
+        <div class="panel">
+            <div class="panel-title">
+                <span>游戏列表</span>
+                <button class="btn btn-primary" style="padding: 6px 12px; font-size: 13px;" onclick="addGame()">+ 新增</button>
+            </div>
+            <div class="game-list" id="gameList">
+                <div class="empty-tip">暂无游戏，点右上角新增</div>
+            </div>
+        </div>
+
+        <!-- 右侧编辑表单 -->
+        <div class="panel">
+            <div class="panel-title">
+                <span id="formTitle">编辑游戏信息</span>
+            </div>
+            <div id="formArea">
+                <div class="empty-tip">请选择左侧游戏，或点击新增按钮</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let games = JSON.parse(localStorage.getItem('admin_games') || '[]');
+        let currentEditId = null;
+
+        // 初始化
+        renderList();
+
+        // 渲染游戏列表
+        function renderList() {
+            const list = document.getElementById('gameList');
+            if (games.length === 0) {
+                list.innerHTML = '<div class="empty-tip">暂无游戏，点右上角新增</div>';
+                return;
+            }
+            list.innerHTML = games.map(g => `
+                <div class="game-item ${currentEditId === g.id ? 'active' : ''}" onclick="editGame(${g.id})">
+                    <span class="game-item-name">${g.title}</span>
+                    <span class="game-item-del" onclick="event.stopPropagation(); deleteGame(${g.id})">删除</span>
+                </div>
+            `).join('');
+        }
+
+        // 新增游戏
+        function addGame() {
+            const newId = games.length > 0 ? Math.max(...games.map(g => g.id)) + 1 : 1;
+            const newGame = {
+                id: newId,
+                title: "新游戏",
+                cover: "",
+                desc: "游戏介绍",
+                tags: [],
+                rating: 4.5,
+                downloads: 0,
+                downloadLink: "",
+                date: new Date().toISOString().split('T')[0],
+                hot: false
+            };
+            games.unshift(newGame);
+            saveLocal();
+            currentEditId = newId;
+            renderList();
+            renderForm();
+        }
+
+        // 编辑游戏
+        function editGame(id) {
+            currentEditId = id;
+            renderList();
+            renderForm();
+        }
+
+        // 删除游戏
+        function deleteGame(id) {
+            if (!confirm('确定要删除这个游戏吗？')) return;
+            games = games.filter(g => g.id !== id);
+            if (currentEditId === id) currentEditId = null;
+            saveLocal();
+            renderList();
+            renderForm();
+        }
+
+        // 渲染编辑表单
+        function renderForm() {
+            const formArea = document.getElementById('formArea');
+            const game = games.find(g => g.id === currentEditId);
+            
+            if (!game) {
+                formArea.innerHTML = '<div class="empty-tip">请选择左侧游戏，或点击新增按钮</div>';
+                document.getElementById('formTitle').textContent = '编辑游戏信息';
+                return;
+            }
+
+            document.getElementById('formTitle').textContent = '编辑：' + game.title;
+            
+            formArea.innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">游戏名称</label>
+                    <input class="form-input" id="f_title" value="${game.title}" oninput="updateField('title', this.value)">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">封面图片链接</label>
+                    <input class="form-input" id="f_cover" value="${game.cover}" oninput="updateField('cover', this.value)">
+                    <div class="tip">填入图片网址，建议尺寸 400x250</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">游戏介绍</label>
+                    <textarea class="form-textarea" id="f_desc" oninput="updateField('desc', this.value)">${game.desc}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">游戏标签</label>
+                    <input class="form-input" id="f_tags" value="${game.tags.join('，')}" oninput="updateField('tags', this.value.split('，').filter(t=>t.trim()))">
+                    <div class="tip">多个标签用中文逗号分隔，例如：模拟经营，像素，联机</div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">评分</label>
+                        <input class="form-input" type="number" step="0.1" id="f_rating" value="${game.rating}" oninput="updateField('rating', parseFloat(this.value))">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">下载量</label>
+                        <input class="form-input" type="number" id="f_downloads" value="${game.downloads}" oninput="updateField('downloads', parseInt(this.value))">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">网盘下载链接</label>
+                    <input class="form-input" id="f_link" value="${game.downloadLink}" oninput="updateField('downloadLink', this.value)">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">上线日期</label>
+                        <input class="form-input" type="date" id="f_date" value="${game.date}" oninput="updateField('date', this.value)">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">是否热门推荐</label>
+                        <select class="form-input" id="f_hot" onchange="updateField('hot', this.value === 'true')">
+                            <option value="false" ${!game.hot ? 'selected' : ''}>否</option>
+                            <option value="true" ${game.hot ? 'selected' : ''}>是</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="currentEditId=null; renderList(); renderForm();">取消</button>
+                    <button class="btn btn-primary" onclick="saveGame()">保存修改</button>
+                </div>
+            `;
+        }
+
+        // 更新字段
+        function updateField(key, value) {
+            const game = games.find(g => g.id === currentEditId);
+            if (game) {
+                game[key] = value;
+            }
+        }
+
+        // 保存游戏
+        function saveGame() {
+            saveLocal();
+            renderList();
+            alert('保存成功！所有修改已暂存，记得导出文件更新到网站');
+        }
+
+        // 保存到本地存储
+        function saveLocal() {
+            localStorage.setItem('admin_games', JSON.stringify(games));
+        }
+
+        // 导入现有数据
+        function importData() {
+            if (!confirm('导入会覆盖当前后台的临时数据，确定继续吗？')) return;
+            fetch('games.json')
+                .then(res => res.json())
+                .then(data => {
+                    games = data;
+                    saveLocal();
+                    currentEditId = null;
+                    renderList();
+                    renderForm();
+                    alert('导入成功，共加载 ' + data.length + ' 个游戏');
+                })
+                .catch(() => {
+                    alert('导入失败，请确保网站根目录有 games.json 文件');
+                });
+        }
+
+        // 导出数据
+        function exportData() {
+            if (games.length === 0) {
+                alert('暂无数据可导出');
+                return;
+            }
+            const jsonStr = JSON.stringify(games, null, 4);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'games.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
