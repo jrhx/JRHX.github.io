@@ -20,6 +20,7 @@ body {
     background-color: var(--bg);
     color: var(--text-main);
     line-height: 1.6;
+    font-size: 14px;
 }
 
 /* 顶部导航 */
@@ -142,6 +143,7 @@ body {
     text-decoration: none;
     font-size: 14px;
     transition: background 0.2s;
+    cursor: pointer;
 }
 
 .user-dropdown a:hover {
@@ -273,7 +275,7 @@ body {
 
 /* 区块标题 */
 .section-title {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 600;
     margin-bottom: 18px;
     display: flex;
@@ -323,6 +325,27 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.game-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    backdrop-filter: blur(10px);
+}
+
+.badge-hot {
+    background: rgba(255, 107, 0, 0.9);
+    color: white;
+}
+
+.badge-new {
+    background: rgba(52, 199, 89, 0.9);
+    color: white;
 }
 
 .game-info {
@@ -439,6 +462,23 @@ body {
     color: white;
 }
 
+.sort-group {
+    display: flex;
+    gap: 16px;
+}
+
+.sort-option {
+    font-size: 13px;
+    color: var(--text-sub);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.sort-option:hover, .sort-option.active {
+    color: var(--primary);
+    font-weight: 500;
+}
+
 /* 游戏详情弹窗 */
 .modal-overlay {
     position: fixed;
@@ -510,8 +550,9 @@ body {
     display: flex;
     gap: 20px;
     color: var(--text-sub);
-    font-size: 14px;
+    font-size: 13px;
     margin-bottom: 20px;
+    flex-wrap: wrap;
 }
 
 .modal-desc {
@@ -520,14 +561,24 @@ body {
     margin-bottom: 24px;
 }
 
+.download-section {
+    margin-bottom: 20px;
+}
+
+.download-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
 .download-btn {
     display: inline-block;
-    padding: 12px 32px;
+    padding: 10px 20px;
     background: var(--primary);
     color: white;
     text-decoration: none;
     border-radius: 8px;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 500;
     transition: background 0.2s;
     border: none;
@@ -536,6 +587,111 @@ body {
 
 .download-btn:hover {
     background: #0077ed;
+}
+
+.download-btn.secondary {
+    background: #f5f5f7;
+    color: var(--text-main);
+}
+
+.download-btn.secondary:hover {
+    background: #e8e8ed;
+}
+
+/* 评论区 */
+.comment-list {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.comment-item {
+    padding: 12px;
+    background: #f5f5f7;
+    border-radius: 8px;
+}
+
+.comment-user {
+    font-weight: 500;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.comment-content {
+    font-size: 13px;
+    color: var(--text-main);
+    line-height: 1.6;
+}
+
+.comment-time {
+    font-size: 11px;
+    color: var(--text-sub);
+    margin-top: 4px;
+}
+
+.form-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 60px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+}
+
+.form-input:focus, .form-textarea:focus {
+    border-color: var(--primary);
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-sub);
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0077ed;
+}
+
+.tip {
+    font-size: 12px;
+    color: var(--text-sub);
+    line-height: 1.5;
 }
 
 /* 空状态 */
