@@ -1,8 +1,10 @@
 // 全局数据
 let games = [];
 let currentFilter = 'all';
+let currentSort = 'default';
 let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
 let history = JSON.parse(localStorage.getItem('history') || '[]');
+let currentGameId = null;
 
 // 页面加载完成后执行
 document.addEventListener('DOMContentLoaded', async () => {
@@ -13,6 +15,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSearch();
     initUserMenu();
     initNavSwitch();
+    initSortOptions();
+    initModalClose();
 });
 
 // 加载游戏数据
@@ -20,6 +24,11 @@ async function loadGames() {
     try {
         const res = await fetch('games.json');
         games = await res.json();
+        // 兼容旧数据
+        games = games.map(g => ({
+            ...g,
+            downloadLinks: g.downloadLinks || [{ name: '下载', url: g.downloadLink || '#' }]
+        }));
     } catch (e) {
         console.error('加载游戏数据失败', e);
     }
@@ -27,11 +36,13 @@ async function loadGames() {
 
 // 渲染首页游戏
 function renderHomeGames() {
-    const hotGames = games.filter(g => g.hot).slice(0, 6);
-    const newGames = [...games].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
+    const featured = games.filter(g => g.featured).slice(0, 6);
+    const hot = [...games].sort((a,b) => b.downloads - a.downloads).slice(0, 6);
+    const newest = [...games].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
     
-    document.getElementById('hotGames').innerHTML = renderGameCards(hotGames);
-    document.getElementById('newGames').innerHTML = renderGameCards(newGames);
+    document.getElementById('featuredGames').innerHTML = renderGameCards(featured);
+    document.getElementById('hotGames').innerHTML = renderGameCards(hot);
+    document.getElementById('newGames').innerHTML = renderGameCards(newest);
     
     bindCardEvents();
 }
@@ -45,7 +56,9 @@ function renderGameCards(gameList) {
     return gameList.map(game => `
         <div class="game-card" data-id="${game.id}">
             <div class="game-cover">
-                <img src="${game.cover}" alt="${game.title}" loading="lazy">
+                ${game.hot ? '<span class="game-badge badge-hot">热门</span>' : ''}
+                ${game.isNew ? '<span class="game-badge badge-new">新游</span>' : ''}
+                <img src="${game.cover}" alt="${game.title}" loading="lazy" onerror="this.style.display='none'">
             </div>
             <div class="game-info">
                 <div class="game-title">${game.title}</div>
@@ -54,7 +67,7 @@ function renderGameCards(gameList) {
                 </div>
                 <div class="game-meta">
                     <span class="game-rating">★ ${game.rating}</span>
-                    <span>下载 ${game.downloads}</span>
+                    <span>${game.downloads} 下载</span>
                     <button class="fav-btn ${favorites.includes(game.id) ? 'active' : ''}" data-id="${game.id}">
                         ${favorites.includes(game.id) ? '❤️' : '🤍'}
                     </button>
@@ -66,7 +79,6 @@ function renderGameCards(gameList) {
 
 // 绑定卡片点击和收藏事件
 function bindCardEvents() {
-    // 卡片点击打开详情
     document.querySelectorAll('.game-card').forEach(card => {
         card.addEventListener('click', (e) => {
             if (e.target.classList.contains('fav-btn')) return;
@@ -75,7 +87,6 @@ function bindCardEvents() {
         });
     });
     
-    // 收藏按钮
     document.querySelectorAll('.fav-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -103,36 +114,94 @@ function toggleFavorite(id, btn) {
 function openGameDetail(id) {
     const game = games.find(g => g.id === id);
     if (!game) return;
+    currentGameId = id;
     
     // 添加到浏览历史
-    if (!history.includes(id)) {
-        history.unshift(id);
-        if (history.length > 20) history.pop();
-        localStorage.setItem('history', JSON.stringify(history));
-    }
+    history = history.filter(hid => hid !== id);
+    history.unshift(id);
+    if (history.length > 50) history.pop();
+    localStorage.setItem('history', JSON.stringify(history));
     
     const modal = document.getElementById('gameModal');
     document.getElementById('modalTitle').textContent = game.title;
     document.getElementById('modalCover').style.backgroundImage = `url(${game.cover})`;
+    document.getElementById('modalCover').style.backgroundSize = 'cover';
+    document.getElementById('modalCover').style.backgroundPosition = 'center';
     document.getElementById('modalDesc').textContent = game.desc;
-    document.getElementById('modalRating').textContent = `★ ${game.rating}`;
-    document.getElementById('modalDownloads').textContent = `下载 ${game.downloads} 次`;
+    document.getElementById('modalRating').textContent = `★ ${game.rating} 分`;
+    document.getElementById('modalDownloads').textContent = `${game.downloads} 次下载`;
+    document.getElementById('modalVersion').textContent = game.version ? `版本 ${game.version}` : '';
+    document.getElementById('modalSize').textContent = game.size ? `大小 ${game.size}` : '';
     document.getElementById('modalTags').innerHTML = game.tags.map(t => `<span class="tag">${t}</span>`).join('');
-    document.getElementById('downloadBtn').onclick = () => window.open(game.downloadLink, '_blank');
+    
+    // 下载按钮
+    const validLinks = game.downloadLinks.filter(l => l.url);
+    document.getElementById('downloadBtns').innerHTML = validLinks.map((link, idx) => `
+        <a href="${link.url}" target="_blank" class="download-btn ${idx > 0 ? 'secondary' : ''}">
+            ${link.name}
+        </a>
+    `).join('');
+    
+    // 加载评论
+    renderComments(id);
     
     modal.classList.add('show');
 }
 
 // 关闭弹窗
-document.getElementById('modalClose').addEventListener('click', () => {
-    document.getElementById('gameModal').classList.remove('show');
-});
-
-document.getElementById('gameModal').addEventListener('click', (e) => {
-    if (e.target.id === 'gameModal') {
+function initModalClose() {
+    document.getElementById('modalClose').addEventListener('click', () => {
         document.getElementById('gameModal').classList.remove('show');
+    });
+
+    document.getElementById('gameModal').addEventListener('click', (e) => {
+        if (e.target.id === 'gameModal') {
+            document.getElementById('gameModal').classList.remove('show');
+        }
+    });
+}
+
+// 评论功能
+function renderComments(gameId) {
+    const allComments = JSON.parse(localStorage.getItem('comments') || '{}');
+    const gameComments = allComments[gameId] || [];
+    
+    const list = document.getElementById('commentList');
+    if (gameComments.length === 0) {
+        list.innerHTML = '<div class="empty-state" style="padding:20px; font-size:13px;">暂无评论，快来抢沙发</div>';
+        return;
     }
-});
+    
+    list.innerHTML = gameComments.map(c => `
+        <div class="comment-item">
+            <div class="comment-user">${c.user}</div>
+            <div class="comment-content">${c.content}</div>
+            <div class="comment-time">${c.time}</div>
+        </div>
+    `).join('');
+}
+
+function submitComment() {
+    const input = document.getElementById('commentInput');
+    const content = input.value.trim();
+    if (!content) {
+        alert('请输入评论内容');
+        return;
+    }
+    
+    const allComments = JSON.parse(localStorage.getItem('comments') || '{}');
+    if (!allComments[currentGameId]) allComments[currentGameId] = [];
+    
+    allComments[currentGameId].unshift({
+        user: '游客',
+        content: content,
+        time: new Date().toLocaleString('zh-CN')
+    });
+    
+    localStorage.setItem('comments', JSON.stringify(allComments));
+    input.value = '';
+    renderComments(currentGameId);
+}
 
 // 轮播图功能
 function initCarousel() {
@@ -188,7 +257,7 @@ function initCarousel() {
 
 // 导航切换
 function initNavSwitch() {
-    const navLinks = document.querySelectorAll('.nav-menu a');
+    const navLinks = document.querySelectorAll('.nav-menu a[data-page]');
     const pages = document.querySelectorAll('.page');
     
     navLinks.forEach(link => {
@@ -201,15 +270,15 @@ function initNavSwitch() {
             pages.forEach(p => p.classList.remove('active'));
             document.getElementById(target).classList.add('active');
             
-            // 切换到分类页时渲染
             if (target === 'categoryPage') {
                 renderCategoryGames();
             }
-            
-            // 关闭下拉菜单
-            document.querySelector('.user-dropdown').classList.remove('show');
         });
     });
+}
+
+function switchToCategory() {
+    document.querySelector('.nav-menu a[data-page="categoryPage"]').click();
 }
 
 // 初始化筛选标签
@@ -230,11 +299,36 @@ function initFilterTags() {
     });
 }
 
+// 排序选项
+function initSortOptions() {
+    document.querySelectorAll('.sort-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            document.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+            currentSort = opt.dataset.sort;
+            renderCategoryGames();
+        });
+    });
+}
+
 // 渲染分类页游戏
 function renderCategoryGames() {
     let filtered = games;
     if (currentFilter !== 'all') {
         filtered = games.filter(g => g.tags.includes(currentFilter));
+    }
+    
+    // 排序
+    switch(currentSort) {
+        case 'newest':
+            filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
+            break;
+        case 'hot':
+            filtered.sort((a,b) => b.downloads - a.downloads);
+            break;
+        case 'rating':
+            filtered.sort((a,b) => b.rating - a.rating);
+            break;
     }
     
     document.getElementById('categoryGames').innerHTML = renderGameCards(filtered);
@@ -248,7 +342,6 @@ function initSearch() {
     searchInput.addEventListener('input', (e) => {
         const keyword = e.target.value.trim().toLowerCase();
         if (!keyword) {
-            // 搜索为空时回到当前页
             if (document.getElementById('homePage').classList.contains('active')) {
                 renderHomeGames();
             } else {
@@ -262,12 +355,12 @@ function initSearch() {
             g.tags.some(t => t.toLowerCase().includes(keyword))
         );
         
-        // 在分类页显示搜索结果
         if (document.getElementById('categoryPage').classList.contains('active')) {
             document.getElementById('categoryGames').innerHTML = renderGameCards(result);
         } else {
-            // 首页也显示搜索结果
-            document.getElementById('hotGames').innerHTML = renderGameCards(result);
+            // 首页只显示搜索结果
+            document.getElementById('featuredGames').innerHTML = renderGameCards(result);
+            document.getElementById('hotGames').innerHTML = '';
             document.getElementById('newGames').innerHTML = '';
         }
         
@@ -292,18 +385,58 @@ function initUserMenu() {
     // 收藏页
     document.getElementById('showFavorites').addEventListener('click', () => {
         const favGames = games.filter(g => favorites.includes(g.id));
-        document.querySelector('.nav-menu a[data-page="categoryPage"]').click();
+        switchToCategory();
+        document.getElementById('categoryTitle').textContent = '我的收藏';
         document.getElementById('categoryGames').innerHTML = renderGameCards(favGames);
-        document.querySelector('.section-title span').textContent = '我的收藏';
         bindCardEvents();
+        dropdown.classList.remove('show');
     });
     
     // 历史记录
     document.getElementById('showHistory').addEventListener('click', () => {
         const historyGames = history.map(id => games.find(g => g.id === id)).filter(Boolean);
-        document.querySelector('.nav-menu a[data-page="categoryPage"]').click();
+        switchToCategory();
+        document.getElementById('categoryTitle').textContent = '浏览历史';
         document.getElementById('categoryGames').innerHTML = renderGameCards(historyGames);
-        document.querySelector('.section-title span').textContent = '浏览历史';
         bindCardEvents();
+        dropdown.classList.remove('show');
     });
 }
+
+// 投稿弹窗
+function openSubmitModal() {
+    document.getElementById('submitModal').classList.add('show');
+}
+
+function closeSubmitModal() {
+    document.getElementById('submitModal').classList.remove('show');
+}
+
+function generateSubmit() {
+    const name = document.getElementById('submitName').value.trim();
+    const desc = document.getElementById('submitDesc').value.trim();
+    const link = document.getElementById('submitLink').value.trim();
+    const user = document.getElementById('submitUser').value.trim() || '匿名网友';
+    
+    if (!name || !link) {
+        alert('请填写游戏名称和下载链接');
+        return;
+    }
+    
+    const result = `【游戏投稿】
+游戏名称：${name}
+游戏介绍：${desc}
+下载链接：${link}
+投稿人：${user}
+投稿时间：${new Date().toLocaleString('zh-CN')}`;
+    
+    document.getElementById('submitResult').style.display = 'block';
+    document.getElementById('submitResult').value = result;
+    document.getElementById('submitResult').select();
+}
+
+document.getElementById('submitModal').addEventListener('click', (e) => {
+    if (e.target.id === 'submitModal') {
+        closeSubmitModal();
+    }
+});
